@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crime Prediction</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Crime Prediction</h1>
+        <form id="prediction-form" method="POST">
+            <label for="year">Select Year:</label>
+            <select name="year" id="year">
+                <option value="2018">2018</option>
+                <option value="2019">2019</option>
+                <option value="2020">2020</option>
+                <option value="2021">2021</option>
+                <option value="2022">2022</option>
+                <option value="2023">2023</option>
+            </select>
+            <label for="model">Select Model:</label>
+            <select name="model" id="model">
+                <option value="ARIMA">ARIMA</option>
+                <option value="LSTM">LSTM</option>
+            </select>
+            <button type="submit">Predict</button>
+        </form>
+        <div id="result"></div>
+        <canvas id="predictionChart" width="400" height="200"></canvas>
+    </div>
+    <footer>
+        &copy; 2024 Crime Prediction App. All rights reserved.
+    </footer>
+    <script>
+        document.getElementById('prediction-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            fetch('/predict', {
+                method: 'POST',
+                body: new FormData(this)
+            })
+            .then(response => response.json())
+            .then(data => {
+                const resultDiv = document.getElementById('result');
+                resultDiv.innerHTML = '<h2>Prediction Results</h2>';
+                data.result.forEach(categoryResult => {
+                    const categoryTitle = document.createElement('h3');
+                    categoryTitle.textContent = categoryResult.category;
+                    resultDiv.appendChild(categoryTitle);
+
+                    const table = document.createElement('table');
+                    table.innerHTML = `
+                        <tr>
+                            <th>Day</th>
+                            <th>Prediction</th>
+                        </tr>
+                    `;
+                    categoryResult.predictions.forEach(item => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${item.day}</td>
+                            <td>${item.prediction.toFixed(2)}</td>
+                        `;
+                        table.appendChild(row);
+                    });
+                    resultDiv.appendChild(table);
+                });
+
+                // Chart.js code
+                const ctx = document.getElementById('predictionChart').getContext('2d');
+                const categories = data.result.map(categoryResult => categoryResult.category);
+                const predictionsPerCategory = data.result.map(categoryResult => ({
+                    label: categoryResult.category,
+                    data: categoryResult.predictions.map(item => item.prediction),
+                    borderColor: getRandomColor(),
+                    borderWidth: 1,
+                    fill: false
+                }));
+
+                if (window.myChart) {
+                    window.myChart.destroy();
+                }
+
+                window.myChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: Array.from({ length: 30 }, (_, i) => i + 1),
+                        datasets: predictionsPerCategory
+                    },
+                    options: {
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Day'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Prediction'
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+        });
+
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+    </script>
+</body>
+</html>
+
